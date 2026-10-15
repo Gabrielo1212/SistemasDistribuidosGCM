@@ -1,0 +1,319 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+database.js
+package.json
+README.md
+schema.js
+server.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".gitignore">
+serviceUsers/node_modules
+.vscode
+serviceUsers/npm-debug.log
+.serverless
+serviceUsers/variables.env
+</file>
+
+<file path="database.js">
+const { Sequelize } = require('sequelize');
+
+const sequelize = new Sequelize('bd_agenda_api', 'root', '', {
+  host: 'localhost',
+  dialect: 'mysql'
+});
+
+
+const Persona = sequelize.define('Persona', {
+  id: {
+    type: Sequelize.BIGINT,
+    allowNull: false,
+    primaryKey: true,
+    autoIncrement: true,
+    unsigned: true
+  },
+  nombres: {
+    type: Sequelize.STRING(50),
+    allowNull: false
+  },
+  apellidos: {
+    type: Sequelize.STRING(50),
+    allowNull: true
+  },
+  documento_identidad: {
+    type: Sequelize.STRING(20),
+    allowNull: false
+  },
+  sexo: {
+    type: Sequelize.STRING(20),
+    allowNull: true
+  },
+  fecha_nacimiento: {
+    type: Sequelize.DATEONLY,
+    allowNull: true
+  },
+  celular: {
+    type: Sequelize.STRING(20),
+    allowNull: true
+  }
+}, {
+  tableName: 'personas',
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
+});
+
+// Nota: no se usa sequelize.sync() porque la tabla 'personas'
+// ya existe con datos. sync({ alter: true }) podría modificarla.
+
+module.exports = { sequelize, Persona };
+</file>
+
+<file path="package.json">
+{
+  "name": "graphql-mysql",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "serve": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-graphql": "^0.12.0",
+    "graphql": "^15.8.1",
+    "mysql2": "^3.9.7",
+    "sequelize": "^6.37.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
+</file>
+
+<file path="README.md">
+# instalar dependencia
+mkdir graphql-mysql
+cd graphql-mysql
+npm init -y
+npm install express graphql express-graphql mysql2 sequelize
+node server.js 
+#consultas 
+
+{
+  participantes {
+    ci
+    nombres
+    apellidos
+    sexo
+    fecha_nacimiento
+  }
+}
+
+{
+  participante(ci: "12345678") {
+    ci
+    nombres
+    apellidos
+    sexo
+    fecha_nacimiento
+  }
+}
+
+#crear 
+mutation {
+  addParticipante(
+    ci: "87654321",
+    nombres: "Juan",
+    apellidos: "Perez",
+    sexo: "M",
+    fecha_nacimiento: "1985-05-15"
+  ) {
+    ci
+    nombres
+    apellidos
+    sexo
+    fecha_nacimiento
+  }
+}
+</file>
+
+<file path="schema.js">
+const { GraphQLObjectType, GraphQLString, GraphQLSchema, GraphQLList, GraphQLNonNull } = require('graphql');
+const { Persona } = require('./database');
+
+// Definición del tipo Persona en GraphQL
+const PersonaType = new GraphQLObjectType({
+  name: 'Persona',
+  fields: {
+    id: { type: GraphQLString },
+    nombres: { type: GraphQLString },
+    apellidos: { type: GraphQLString },
+    documento_identidad: { type: GraphQLString },
+    sexo: { type: GraphQLString },
+    fecha_nacimiento: { type: GraphQLString },
+    celular: { type: GraphQLString }
+  }
+});
+
+// Definición de las consultas (queries)
+const RootQuery = new GraphQLObjectType({
+  name: 'RootQueryType',
+  fields: {
+    personas: {
+      type: new GraphQLList(PersonaType),
+      resolve(parent, args) {
+        // Obtener todas las personas
+        return Persona.findAll();
+      }
+    },
+    persona: {
+      type: PersonaType,
+      args: { id: { type: GraphQLString } },
+      resolve(parent, args) {
+        // Buscar una persona por ID
+        return Persona.findByPk(args.id);
+      }
+    }
+  }
+});
+
+// Definición de las mutaciones
+const Mutation = new GraphQLObjectType({
+  name: 'Mutation',
+  fields: {
+    addPersona: {
+      type: PersonaType,
+      args: {
+        nombres: { type: new GraphQLNonNull(GraphQLString) },
+        apellidos: { type: GraphQLString },
+        documento_identidad: { type: new GraphQLNonNull(GraphQLString) },
+        sexo: { type: GraphQLString },
+        fecha_nacimiento: { type: GraphQLString },
+        celular: { type: GraphQLString }
+      },
+      resolve(parent, args) {
+        // Crear una nueva persona
+        return Persona.create({
+          nombres: args.nombres,
+          apellidos: args.apellidos,
+          documento_identidad: args.documento_identidad,
+          sexo: args.sexo,
+          fecha_nacimiento: args.fecha_nacimiento,
+          celular: args.celular
+        });
+      }
+    },
+    updatePersona: {
+      type: PersonaType,
+      args: {
+        id: { type: new GraphQLNonNull(GraphQLString) },
+        nombres: { type: GraphQLString },
+        apellidos: { type: GraphQLString },
+        documento_identidad: { type: GraphQLString },
+        sexo: { type: GraphQLString },
+        fecha_nacimiento: { type: GraphQLString },
+        celular: { type: GraphQLString }
+      },
+      resolve(parent, args) {
+        // Actualizar una persona existente
+        return Persona.findByPk(args.id)
+          .then(persona => {
+            if (!persona) {
+              throw new Error('Persona no encontrada');
+            }
+            return persona.update({
+              nombres: args.nombres !== undefined ? args.nombres : persona.nombres,
+              apellidos: args.apellidos !== undefined ? args.apellidos : persona.apellidos,
+              documento_identidad: args.documento_identidad !== undefined ? args.documento_identidad : persona.documento_identidad,
+              sexo: args.sexo !== undefined ? args.sexo : persona.sexo,
+              fecha_nacimiento: args.fecha_nacimiento !== undefined ? args.fecha_nacimiento : persona.fecha_nacimiento,
+              celular: args.celular !== undefined ? args.celular : persona.celular
+            });
+          });
+      }
+    }
+  }
+});
+
+// Exporta el esquema GraphQL
+module.exports = new GraphQLSchema({
+  query: RootQuery,
+  mutation: Mutation
+});
+</file>
+
+<file path="server.js">
+const express = require('express');
+const { graphqlHTTP } = require('express-graphql');
+const schema = require('./schema');
+const { sequelize } = require('./database');
+
+const app = express();
+
+app.use('/graphql', graphqlHTTP({
+  schema: schema,
+  graphiql: true
+}));
+
+sequelize.authenticate()
+  .then(() => {
+    console.log('Connection to the database has been established successfully.');
+    app.listen(4000, () => {
+      console.log('Server is running on http://localhost:4000/graphql');
+    });
+  })
+  .catch(err => {
+    console.error('Unable to connect to the database:', err);
+  });
+</file>
+
+</files>
